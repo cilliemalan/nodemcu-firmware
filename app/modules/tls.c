@@ -641,7 +641,7 @@ static const LUA_REG_TYPE tls_map[] = {
 
 int luaopen_tls( lua_State *L ) {
   luaL_rometatable(L, "tls.socket", (void *)tls_socket_map);  // create metatable for net.server
-  espconn_secure_set_size(ESPCONN_CLIENT, 4096);
+  //espconn_secure_set_size(ESPCONN_CLIENT, 4096);
   return 0;
 }
 

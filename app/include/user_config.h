@@ -61,9 +61,9 @@ extern void luaL_assertfail(const char *file, int line, const char *message);
 
 // SSL buffer size used only for espconn-layer secure connections.
 // See https://github.com/nodemcu/nodemcu-firmware/issues/1457 for conversation details.
-#define SSL_BUFFER_SIZE 5120
+#define SSL_BUFFER_SIZE 8192
 
-//#define CLIENT_SSL_ENABLE
+#define CLIENT_SSL_ENABLE
 //#define MD2_ENABLE
 #define SHA2_ENABLE
 

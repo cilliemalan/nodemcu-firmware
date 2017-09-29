@@ -30,7 +30,7 @@ extern void luaL_assertfail(const char *file, int line, const char *message);
 #define BIT_RATE_DEFAULT BIT_RATE_115200
 
 // This enables automatic baud rate detection at startup
-#define BIT_RATE_AUTOBAUD
+//#define BIT_RATE_AUTOBAUD
 
 #define NODE_ERROR
 

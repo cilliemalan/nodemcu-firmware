@@ -466,6 +466,20 @@ int lua_main (int argc, char **argv) {
   return (status || s.status) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
+
+extern bool uart0_echo;
+void echo_c(const char c) {
+  if(uart0_echo) uart0_putc(c);
+}
+
+void echo_s(const char* str) {
+  if(uart0_echo) {
+    while(str && *str) {
+      uart0_putc(*(str++));
+    }
+  }
+}
+
 void lua_handle_input (bool force)
 {
   if (gLoad.L && (force || readline (&gLoad)))
@@ -532,14 +546,10 @@ static void dojob(lua_Load *load){
   load->done = 0;
   load->line_position = 0;
   c_memset(load->line, 0, load->len);
-  c_puts(load->prmt);
+  echo_s(load->prmt);
 }
 
-#ifndef uart_putc
-#define uart_putc uart0_putc
-#endif
 extern bool uart_on_data_cb(const char *buf, size_t len);
-extern bool uart0_echo;
 extern bool run_input;
 extern uint16_t need_len;
 extern int16_t end_char;
@@ -569,9 +579,9 @@ static bool readline(lua_Load *load){
       {
         if (load->line_position > 0)
         {
-          if(uart0_echo) uart_putc(0x08);
-          if(uart0_echo) uart_putc(' ');
-          if(uart0_echo) uart_putc(0x08);
+          echo_c(0x08);
+          echo_c(' ');
+          echo_c(0x08);
           load->line_position--;
         }
         load->line[load->line_position] = 0;
@@ -593,12 +603,12 @@ static bool readline(lua_Load *load){
         last_nl_char = ch;
 
         load->line[load->line_position] = 0;
-        if(uart0_echo) uart_putc('\n');
+        echo_c('\n');
         uart_on_data_cb(load->line, load->line_position);
         if (load->line_position == 0)
         {
           /* Get a empty line, then go to get a new line */
-          c_puts(load->prmt);
+          echo_s(load->prmt);
         } else {
           load->done = 1;
           need_dojob = true;
@@ -613,7 +623,7 @@ static bool readline(lua_Load *load){
       // }
       
       /* echo */
-      if(uart0_echo) uart_putc(ch);
+      echo_c(ch);
 
           /* it's a large line, discard it */
       if ( load->line_position + 1 >= load->len ){

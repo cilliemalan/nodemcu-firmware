@@ -24,6 +24,8 @@
 
 #include "os_type.h"
 
+#include "terminal.h"
+
 lua_State *globalL = NULL;
 
 lua_Load gLoad;
@@ -429,7 +431,7 @@ static int pmain (lua_State *L) {
 }
 
 static void dojob(lua_Load *load);
-static bool readline(lua_Load *load);
+static bool readline(bool *early);
 char line_buffer[LUA_MAXINPUT];
 
 #ifdef LUA_RPC
@@ -468,11 +470,7 @@ int lua_main (int argc, char **argv) {
 
 
 extern bool uart0_echo;
-void echo_c(const char c) {
-  if(uart0_echo) uart0_putc(c);
-}
-
-void echo_s(const char* str) {
+static void echo_s(const char* str) {
   if(uart0_echo) {
     while(str && *str) {
       uart0_putc(*(str++));
@@ -482,8 +480,25 @@ void echo_s(const char* str) {
 
 void lua_handle_input (bool force)
 {
-  if (gLoad.L && (force || readline (&gLoad)))
-    dojob (&gLoad);
+  if(gLoad.L)
+  {
+    if (force)
+    {
+      dojob (&gLoad);
+    }
+    else
+    {
+      bool early = false;
+      do
+      {
+        if(readline(&early))
+        {
+          dojob(&gLoad);
+        }
+      }
+      while(early);
+    }
+  }
 }
 
 void donejob(lua_Load *load){
@@ -554,88 +569,31 @@ extern bool run_input;
 extern uint16_t need_len;
 extern int16_t end_char;
 static char last_nl_char = '\0';
-static bool readline(lua_Load *load){
+static bool readline(bool *early){
   // NODE_DBG("readline() is called.\n");
-  bool need_dojob = false;
+  bool line_done = false;
   char ch;
+  lua_Load *load = &gLoad;
+  *early = false;
   while (uart_getc(&ch))
   {
     if(run_input)
     {
-      char tmp_last_nl_char = last_nl_char;
-      // reset marker, will be finally set below when newline is processed
-      last_nl_char = '\0';
+      line_done = terminal_process_input(ch);
 
-      /* handle CR & LF characters
-         filters second char of LF&CR (\n\r) or CR&LF (\r\n) sequences */
-      if ((ch == '\r' && tmp_last_nl_char == '\n') || // \n\r sequence -> skip \r
-          (ch == '\n' && tmp_last_nl_char == '\r'))   // \r\n sequence -> skip \n
+      //send to uart callback
+      if(line_done && load->line_position != 0)
       {
-        continue;
-      }
-
-      /* backspace key */
-      else if (ch == 0x7f || ch == 0x08)
-      {
-        if (load->line_position > 0)
-        {
-          echo_c(0x08);
-          echo_c(' ');
-          echo_c(0x08);
-          load->line_position--;
-        }
-        load->line[load->line_position] = 0;
-        continue;
-      }
-      /* EOT(ctrl+d) */
-      // else if (ch == 0x04)
-      // {
-      //   if (load->line_position == 0)
-      //     // No input which makes lua interpreter close 
-      //     donejob(load);
-      //   else
-      //     continue;
-      // }
-
-      /* end of line */
-      if (ch == '\r' || ch == '\n')
-      {
-        last_nl_char = ch;
-
-        load->line[load->line_position] = 0;
-        echo_c('\n');
         uart_on_data_cb(load->line, load->line_position);
-        if (load->line_position == 0)
-        {
-          /* Get a empty line, then go to get a new line */
-          echo_s(load->prmt);
-        } else {
-          load->done = 1;
-          need_dojob = true;
-        }
-        continue;
-      }
-
-      /* other control character or not an acsii character */
-      // if (ch < 0x20 || ch >= 0x80)
-      // {
-      //   continue;
-      // }
-      
-      /* echo */
-      echo_c(ch);
-
-          /* it's a large line, discard it */
-      if ( load->line_position + 1 >= load->len ){
-        load->line_position = 0;
+        *early = true;
+        break;
       }
     }
-
-    load->line[load->line_position] = ch;
-    load->line_position++;
-
-    if(!run_input)
+    else
     {
+      load->line[load->line_position] = ch;
+      load->line_position++;
+
       if( ((need_len!=0) && (load->line_position >= need_len)) || \
         (load->line_position >= load->len) || \
         ((end_char>=0) && ((unsigned char)ch==(unsigned char)end_char)) )
@@ -644,8 +602,6 @@ static bool readline(lua_Load *load){
         load->line_position = 0;
       }
     }
-
-    ch = 0;
   }
   
   if( (load->line_position > 0) && (!run_input) && (need_len==0) && (end_char<0) )
@@ -654,5 +610,5 @@ static bool readline(lua_Load *load){
     load->line_position = 0;
   }
 
-  return need_dojob;
+  return line_done;
 }

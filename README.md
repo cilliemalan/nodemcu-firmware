@@ -1,3 +1,11 @@
+### My changes
+I forked the NodeMCU firmware in order to make a few improvements as required for the 2017 Rabbiteer IoT session. Some improvements include:
+- vastly improved line editing on a terminal connection.
+- the ability to turn echo off entirely from the terminal.
+- baud rate detection on startup is disabled.
+- Increased TLS buffer size.
+- A few more modules are added by default (AM2320, PWM, RFSWITCH, ROTARY, WS2812, RTCTIME, SNTP).
+
 # **NodeMCU 2.1.0** #
 
 [![Join the chat at https://gitter.im/nodemcu/nodemcu-firmware](https://img.shields.io/gitter/room/badges/shields.svg)](https://gitter.im/nodemcu/nodemcu-firmware?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
